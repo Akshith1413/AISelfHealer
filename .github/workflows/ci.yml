@@ -1,0 +1,56 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  node:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm install
+      - run: npm test
+      - run: npm run build --workspaces --if-present
+
+  python:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        service: [data-service, worker-service, ai-service, metrics-aggregator, healing-orchestrator, chaos-service]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r services/${{ matrix.service }}/requirements.txt pytest httpx
+      - run: pytest services/${{ matrix.service }}/tests
+
+  go:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.26"
+      - run: go test ./services/health-monitor/...
+
+  compose:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker compose config
+
+  helm:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: azure/setup-helm@v4
+      - run: helm lint helm/neuralmesh
+      - run: helm template neuralmesh helm/neuralmesh > /tmp/neuralmesh.yaml
+
