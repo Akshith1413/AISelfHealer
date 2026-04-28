@@ -1,0 +1,12 @@
+name: network_latency
+description: Add latency to a service path and verify timeout/circuit breaker behavior.
+parameters:
+  service_name: data-service
+  delay_ms: 1200
+  duration_s: 20
+  dry_run: true
+expected:
+  - p99 latency spike
+  - anomaly.detected event
+  - circuit transitions to open
+
