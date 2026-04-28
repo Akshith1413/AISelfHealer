@@ -1,0 +1,10 @@
+name: db_connection_exhaustion
+description: Simulate a saturated database pool and verify root-cause analysis.
+parameters:
+  service_name: data-service
+  duration_s: 30
+  dry_run: true
+expected:
+  - db_pool_wait_ms rises
+  - RCA returns postgres-pool-exhaustion style likely cause
+
