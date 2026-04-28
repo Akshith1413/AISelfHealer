@@ -1,0 +1,10 @@
+name: pod_kill
+description: Kill one selected service container and verify restart, circuit opening, and notification.
+parameters:
+  service_name: data-service
+  dry_run: true
+expected:
+  - service.down event within 5 seconds
+  - healing.started event
+  - healing.complete event within 30 seconds
+
