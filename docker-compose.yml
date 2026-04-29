@@ -1,0 +1,310 @@
+services:
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.7.1
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    ports:
+      - "2181:2181"
+
+  kafka:
+    image: confluentinc/cp-kafka:7.7.1
+    depends_on:
+      - zookeeper
+    ports:
+      - "9092:9092"
+      - "29092:29092"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,PLAINTEXT_HOST://localhost:29092
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+    healthcheck:
+      test: ["CMD", "kafka-broker-api-versions", "--bootstrap-server", "localhost:9092"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+
+  kafka-topics:
+    image: confluentinc/cp-kafka:7.7.1
+    depends_on:
+      kafka:
+        condition: service_healthy
+    volumes:
+      - ./infrastructure/kafka/topics.sh:/topics.sh:ro
+    command: ["bash", "/topics.sh"]
+
+  redis:
+    image: redis:7.4-alpine
+    ports:
+      - "6379:6379"
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  postgres:
+    image: timescale/timescaledb:2.17.2-pg16
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_DB: neuralmesh
+      POSTGRES_USER: neuralmesh
+      POSTGRES_PASSWORD: neuralmesh
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./infrastructure/postgres/init.sql:/docker-entrypoint-initdb.d/001-init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U neuralmesh -d neuralmesh"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  api-gateway:
+    build: ./services/api-gateway
+    depends_on:
+      auth-service:
+        condition: service_started
+      redis:
+        condition: service_healthy
+    env_file: .env.example
+    environment:
+      PORT: 8080
+      JWT_PUBLIC_KEY_URL: http://auth-service:3001/auth/public-key
+    ports:
+      - "8080:8080"
+
+  auth-service:
+    build: ./services/auth-service
+    depends_on:
+      redis:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+    env_file: .env.example
+    environment:
+      PORT: 3001
+    ports:
+      - "3001:3001"
+
+  user-service:
+    build: ./services/user-service
+    depends_on:
+      kafka:
+        condition: service_healthy
+    env_file: .env.example
+    environment:
+      PORT: 3002
+    ports:
+      - "3002:3002"
+
+  data-service:
+    build: ./services/data-service
+    depends_on:
+      postgres:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+    env_file: .env.example
+    ports:
+      - "8001:8001"
+
+  worker-service:
+    build: ./services/worker-service
+    depends_on:
+      redis:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+    env_file: .env.example
+    ports:
+      - "8002:8002"
+
+  ai-service:
+    build: ./services/ai-service
+    depends_on:
+      kafka:
+        condition: service_healthy
+      mlflow:
+        condition: service_started
+    env_file: .env.example
+    ports:
+      - "8003:8003"
+      - "50051:50051"
+
+  metrics-aggregator:
+    build: ./services/metrics-aggregator
+    depends_on:
+      ai-service:
+        condition: service_started
+      kafka:
+        condition: service_healthy
+    env_file: .env.example
+    ports:
+      - "8004:8004"
+
+  healing-orchestrator:
+    build: ./services/healing-orchestrator
+    depends_on:
+      redis:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+    env_file: .env.example
+    ports:
+      - "8005:8005"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+
+  chaos-service:
+    build: ./services/chaos-service
+    env_file: .env.example
+    environment:
+      CHAOS_ALLOW_DESTRUCTIVE: "false"
+    ports:
+      - "8006:8006"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+
+  notification-service:
+    build: ./services/notification-service
+    depends_on:
+      kafka:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    env_file: .env.example
+    environment:
+      PORT: 3003
+    ports:
+      - "3003:3003"
+
+  health-monitor:
+    build: ./services/health-monitor
+    depends_on:
+      api-gateway:
+        condition: service_started
+    env_file: .env.example
+    environment:
+      PORT: 8090
+      API_GATEWAY_URL: http://api-gateway:8080
+    ports:
+      - "8090:8090"
+
+  frontend:
+    build: ./frontend
+    depends_on:
+      api-gateway:
+        condition: service_started
+    ports:
+      - "5173:80"
+
+  prometheus:
+    image: prom/prometheus:v2.55.1
+    volumes:
+      - ./observability/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./observability/prometheus/rules.yml:/etc/prometheus/rules.yml:ro
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --web.enable-lifecycle
+    ports:
+      - "9090:9090"
+
+  alertmanager:
+    image: prom/alertmanager:v0.27.0
+    volumes:
+      - ./observability/alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+    ports:
+      - "9093:9093"
+
+  grafana:
+    image: grafana/grafana:11.4.0
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Viewer
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./observability/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./observability/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    ports:
+      - "3000:3000"
+
+  loki:
+    image: grafana/loki:3.3.2
+    command: ["-config.file=/etc/loki/loki-config.yaml"]
+    volumes:
+      - ./observability/loki/loki-config.yaml:/etc/loki/loki-config.yaml:ro
+    ports:
+      - "3100:3100"
+
+  promtail:
+    image: grafana/promtail:3.3.2
+    command: ["-config.file=/etc/promtail/promtail-config.yaml"]
+    volumes:
+      - ./observability/promtail/promtail-config.yaml:/etc/promtail/promtail-config.yaml:ro
+      - /var/log:/var/log:ro
+
+  jaeger:
+    image: jaegertracing/all-in-one:1.63.0
+    environment:
+      COLLECTOR_OTLP_ENABLED: "true"
+    ports:
+      - "16686:16686"
+      - "4317:4317"
+      - "4318:4318"
+
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.116.1
+    command: ["--config=/etc/otel-collector.yaml"]
+    volumes:
+      - ./observability/otel/otel-collector.yaml:/etc/otel-collector.yaml:ro
+    ports:
+      - "4319:4317"
+
+  vault:
+    image: hashicorp/vault:1.18
+    cap_add:
+      - IPC_LOCK
+    environment:
+      VAULT_DEV_ROOT_TOKEN_ID: neuralmesh-root
+      VAULT_DEV_LISTEN_ADDRESS: 0.0.0.0:8200
+    ports:
+      - "8200:8200"
+
+  minio:
+    image: minio/minio:RELEASE.2024-12-18T13-15-44Z
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: neuralmesh
+      MINIO_ROOT_PASSWORD: neuralmesh123
+    volumes:
+      - minio-data:/data
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+
+  mlflow:
+    image: ghcr.io/mlflow/mlflow:v2.19.0
+    command: mlflow server --host 0.0.0.0 --port 5000 --backend-store-uri sqlite:///mlflow.db --default-artifact-root /mlartifacts
+    volumes:
+      - mlflow-data:/mlartifacts
+    ports:
+      - "5000:5000"
+
+volumes:
+  redis-data:
+  postgres-data:
+  grafana-data:
+  minio-data:
+  mlflow-data:
+
