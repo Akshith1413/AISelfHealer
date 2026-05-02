@@ -1,0 +1,23 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: neuralmesh-config
+  labels:
+    {{- include "neuralmesh.labels" . | nindent 4 }}
+data:
+  NODE_ENV: {{ .Values.global.environment | quote }}
+  REDIS_URL: {{ .Values.config.redisUrl | quote }}
+  KAFKA_BROKERS: {{ .Values.config.kafkaBrokers | quote }}
+  DATABASE_URL: {{ .Values.config.databaseUrl | quote }}
+  MLFLOW_TRACKING_URI: {{ .Values.config.mlflowTrackingUri | quote }}
+  AUTH_SERVICE_URL: "http://auth-service:3001"
+  USER_SERVICE_URL: "http://user-service:3002"
+  DATA_SERVICE_URL: "http://data-service:8001"
+  WORKER_SERVICE_URL: "http://worker-service:8002"
+  AI_SERVICE_URL: "http://ai-service:8003"
+  METRICS_AGGREGATOR_URL: "http://metrics-aggregator:8004"
+  HEALING_ORCHESTRATOR_URL: "http://healing-orchestrator:8005"
+  CHAOS_SERVICE_URL: "http://chaos-service:8006"
+  NOTIFICATION_SERVICE_URL: "http://notification-service:3003"
+  HEALTH_MONITOR_URL: "http://health-monitor:8090"
+
