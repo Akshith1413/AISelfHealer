@@ -1,0 +1,118 @@
+global:
+  imagePullPolicy: IfNotPresent
+  environment: production
+
+ingress:
+  enabled: true
+  className: nginx
+  host: neuralmesh.local
+
+istio:
+  enabled: false
+
+secrets:
+  jwtPublicKey: ""
+  jwtPrivateKey: ""
+  postgresPassword: neuralmesh
+
+config:
+  redisUrl: redis://redis:6379/0
+  kafkaBrokers: kafka:9092
+  databaseUrl: postgresql+psycopg://neuralmesh:neuralmesh@postgres:5432/neuralmesh
+  mlflowTrackingUri: http://mlflow:5000
+
+services:
+  api-gateway:
+    image: neuralmesh/api-gateway
+    port: 8080
+    replicas: 2
+    path: /
+    resources:
+      requests: { cpu: 100m, memory: 128Mi }
+      limits: { cpu: 500m, memory: 512Mi }
+  auth-service:
+    image: neuralmesh/auth-service
+    port: 3001
+    replicas: 2
+    path: /api/v1/auth
+    resources:
+      requests: { cpu: 100m, memory: 128Mi }
+      limits: { cpu: 500m, memory: 512Mi }
+  user-service:
+    image: neuralmesh/user-service
+    port: 3002
+    replicas: 2
+    path: /api/v1/users
+    resources:
+      requests: { cpu: 100m, memory: 128Mi }
+      limits: { cpu: 500m, memory: 512Mi }
+  data-service:
+    image: neuralmesh/data-service
+    port: 8001
+    replicas: 2
+    hpa:
+      enabled: true
+      minReplicas: 2
+      maxReplicas: 10
+      cpu: 70
+      memory: 75
+    resources:
+      requests: { cpu: 200m, memory: 256Mi }
+      limits: { cpu: 1000m, memory: 1Gi }
+  worker-service:
+    image: neuralmesh/worker-service
+    port: 8002
+    replicas: 2
+    resources:
+      requests: { cpu: 200m, memory: 256Mi }
+      limits: { cpu: 1000m, memory: 1Gi }
+  ai-service:
+    image: neuralmesh/ai-service
+    port: 8003
+    replicas: 1
+    resources:
+      requests: { cpu: 500m, memory: 1Gi }
+      limits: { cpu: 2000m, memory: 3Gi }
+  metrics-aggregator:
+    image: neuralmesh/metrics-aggregator
+    port: 8004
+    replicas: 2
+    resources:
+      requests: { cpu: 100m, memory: 256Mi }
+      limits: { cpu: 1000m, memory: 512Mi }
+  healing-orchestrator:
+    image: neuralmesh/healing-orchestrator
+    port: 8005
+    replicas: 1
+    resources:
+      requests: { cpu: 100m, memory: 256Mi }
+      limits: { cpu: 1000m, memory: 512Mi }
+  chaos-service:
+    image: neuralmesh/chaos-service
+    port: 8006
+    replicas: 1
+    resources:
+      requests: { cpu: 100m, memory: 128Mi }
+      limits: { cpu: 500m, memory: 512Mi }
+  notification-service:
+    image: neuralmesh/notification-service
+    port: 3003
+    replicas: 1
+    resources:
+      requests: { cpu: 100m, memory: 128Mi }
+      limits: { cpu: 500m, memory: 512Mi }
+  health-monitor:
+    image: neuralmesh/health-monitor
+    port: 8090
+    replicas: 1
+    resources:
+      requests: { cpu: 100m, memory: 128Mi }
+      limits: { cpu: 500m, memory: 256Mi }
+  frontend:
+    image: neuralmesh/frontend
+    port: 80
+    replicas: 2
+    resources:
+      requests: { cpu: 50m, memory: 64Mi }
+      limits: { cpu: 250m, memory: 256Mi }
+
