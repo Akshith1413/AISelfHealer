@@ -1,0 +1,10 @@
+apiVersion: 1
+
+providers:
+  - name: NeuralMesh
+    type: file
+    disableDeletion: false
+    updateIntervalSeconds: 20
+    options:
+      path: /var/lib/grafana/dashboards
+
