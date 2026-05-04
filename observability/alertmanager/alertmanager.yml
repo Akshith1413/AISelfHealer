@@ -1,0 +1,13 @@
+route:
+  receiver: neuralmesh-default
+  group_by: ["alertname", "service"]
+  group_wait: 10s
+  group_interval: 1m
+  repeat_interval: 30m
+
+receivers:
+  - name: neuralmesh-default
+    webhook_configs:
+      - url: http://notification-service:3003/notifications
+        send_resolved: true
+
