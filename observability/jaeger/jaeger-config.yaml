@@ -1,0 +1,6 @@
+collector:
+  otlp:
+    enabled: true
+query:
+  base-path: /
+
