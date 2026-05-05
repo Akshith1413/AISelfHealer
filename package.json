@@ -1,0 +1,30 @@
+{
+  "name": "neuralmesh",
+  "version": "1.0.0",
+  "private": true,
+  "description": "AI-driven self-healing distributed microservices platform",
+  "workspaces": [
+    "services/api-gateway",
+    "services/auth-service",
+    "services/user-service",
+    "services/notification-service",
+    "frontend"
+  ],
+  "scripts": {
+    "test": "npm run test --workspaces --if-present",
+    "lint": "npm run lint --workspaces --if-present",
+    "build": "npm run build --workspaces --if-present",
+    "dev:gateway": "npm --workspace services/api-gateway run dev",
+    "dev:frontend": "npm --workspace frontend run dev",
+    "compose:up": "docker compose up --build",
+    "compose:down": "docker compose down -v",
+    "demo": "powershell -ExecutionPolicy Bypass -File scripts/demo.ps1"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "devDependencies": {
+    "eslint": "^9.39.1"
+  }
+}
+
