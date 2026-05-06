@@ -1,0 +1,33 @@
+syntax = "proto3";
+
+package neuralmesh.ai;
+
+service AnomalyDetector {
+  rpc ScoreWindow (TelemetryWindow) returns (AnomalyScore);
+}
+
+message MetricPoint {
+  double p99_latency_ms = 1;
+  double error_rate = 2;
+  double throughput_rps = 3;
+  double cpu_percent = 4;
+  double memory_mb = 5;
+  double gc_pause_ms = 6;
+  double db_pool_wait_ms = 7;
+}
+
+message TelemetryWindow {
+  string service_id = 1;
+  string tenant_id = 2;
+  repeated MetricPoint points = 3;
+}
+
+message AnomalyScore {
+  string service_id = 1;
+  bool is_anomaly = 2;
+  double isolation_score = 3;
+  double lstm_probability = 4;
+  string severity = 5;
+  string recommended_action = 6;
+}
+
