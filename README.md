@@ -1,5 +1,5 @@
-# NeuralMesh
-
+# NeuralMesh - in Progress 
+## Experimental Project 
 AI-driven self-healing distributed microservices platform.
 
 NeuralMesh is a full local portfolio system that demonstrates microservices, event-driven telemetry, AI anomaly detection, automated healing, chaos engineering, observability, RBAC, Docker Compose, and Kubernetes/Helm deployment.
