@@ -2,7 +2,7 @@ name: Security Scan
 
 on:
   push:
-    branches: [main]
+    branches: [main, master]
   pull_request:
   schedule:
     - cron: "0 3 * * 1"
@@ -11,8 +11,8 @@ jobs:
   trivy:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
-      - uses: aquasecurity/trivy-action@0.36.0
+      - uses: actions/checkout@v4
+      - uses: aquasecurity/trivy-action@v0.36.0
         with:
           scan-type: fs
           scan-ref: .
@@ -23,6 +23,6 @@ jobs:
   sonar-placeholder:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@v4
       - run: echo "Configure SONAR_TOKEN to enable SonarQube/SonarCloud analysis."
 
