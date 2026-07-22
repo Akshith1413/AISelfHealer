@@ -1,4 +1,4 @@
-# NeuralMesh - in Progress
+# NeuralMesh - in Progress 
 ## Experimental Project 
 ### Note: Refrain from downloading or cloning project as its still in development and it has bugs and potential VIRUS 
 
