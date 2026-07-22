@@ -9,7 +9,7 @@ NeuralMesh is a full local portfolio system that demonstrates microservices, eve
 
 The original product documentation is preserved at [docs/source-documentation.md](/C:/aiSelfHealer/docs/source-documentation.md). The implementation checklist that maps requirements to code lives at [docs/implementation-checklist.md](/C:/aiSelfHealer/docs/implementation-checklist.md).
 
-## What Is Included
+## What Is Included 
 
 - 10 runnable services:
   - API Gateway: Express reverse proxy with JWT validation, Redis-backed token bucket rate limiting, cache headers, WebSocket fan-out, and dynamic routes.
